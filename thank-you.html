@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Thank You — FinWise AI</title>
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans">
+  <section class="min-h-screen flex items-center justify-center p-6">
+    <div class="bg-white shadow rounded-2xl p-8 max-w-lg text-center">
+      <h1 class="text-3xl font-bold text-green-600 mb-3">Thank you for your purchase!</h1>
+      <p class="text-gray-700 mb-6">Your payment was successful. A receipt has been sent to your PayPal email.</p>
+      <div class="text-left bg-gray-50 rounded-lg p-4 mb-4">
+        <p><span class="font-semibold">Order ID:</span> <span id="orderId">—</span></p>
+        <p><span class="font-semibold">Item:</span> <span id="itemName">—</span></p>
+        <p><span class="font-semibold">Amount:</span> $<span id="amount">—</span></p>
+      </div>
+      <div id="downloadBlock" class="hidden">
+        <a id="downloadLink" href="#" class="inline-block bg-indigo-600 text-white px-5 py-2 rounded-lg hover:bg-indigo-700" target="_blank" rel="noopener">Download your purchase</a>
+        <p class="text-xs text-gray-500 mt-2">Having trouble? Email support@finwiseai.io with your Order ID.</p>
+      </div>
+      <div id="noLinkBlock" class="text-sm text-gray-600 hidden">
+        We’re preparing your files. If the download doesn’t appear in a minute, email support@finwiseai.io with your Order ID.
+      </div>
+      <a href="/" class="inline-block mt-6 text-indigo-600 underline">Back to Home</a>
+    </div>
+  </section>
+
+  <script>
+    const p = new URLSearchParams(window.location.search);
+    const orderId = p.get('order') || 'N/A';
+    const itemName = p.get('item') || 'N/A';
+    const amount   = p.get('amount') || 'N/A';
+    document.getElementById('orderId').textContent = orderId;
+    document.getElementById('itemName').textContent = itemName;
+    document.getElementById('amount').textContent = amount;
+
+    // Fetch delivery links mapped by product name
+    fetch('downloads.json')
+      .then(r => r.json())
+      .then(map => {
+        const url = map[itemName];
+        if (url) {
+          const a = document.getElementById('downloadLink');
+          a.href = url;
+          document.getElementById('downloadBlock').classList.remove('hidden');
+        } else {
+          document.getElementById('noLinkBlock').classList.remove('hidden');
+        }
+      })
+      .catch(() => document.getElementById('noLinkBlock').classList.remove('hidden'));
+  </script>
+</body>
+</html>

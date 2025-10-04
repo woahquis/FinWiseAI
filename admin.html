@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — FinWise AI Orders</title>
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans">
+  <header class="bg-white shadow">
+    <div class="max-w-7xl mx-auto p-4 flex items-center justify-between">
+      <h1 class="text-2xl font-bold text-indigo-600">FinWise AI — Admin</h1>
+      <a href="/" class="text-indigo-600 underline">Back to site</a>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto p-4 space-y-6">
+    <!-- Auth -->
+    <section class="bg-white rounded-2xl shadow p-6">
+      <h2 class="text-xl font-semibold mb-3">Authenticate</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+        <div>
+          <label class="text-sm text-gray-600">ADMIN_LIST_TOKEN</label>
+          <input id="token" type="password" class="border rounded-lg p-2 w-full" placeholder="Enter ADMIN_LIST_TOKEN" />
+        </div>
+        <div class="flex gap-2">
+          <button id="loadBtn" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">Load Orders</button>
+          <button id="logoutBtn" class="hidden border px-4 py-2 rounded-lg">Clear</button>
+        </div>
+        <p id="status" class="text-sm text-gray-500"></p>
+      </div>
+    </section>
+
+    <!-- Filters and Summary -->
+    <section class="bg-white rounded-2xl shadow p-6 space-y-4">
+      <div class="grid grid-cols-1 md:grid-cols-6 gap-3">
+        <div>
+          <label class="text-sm text-gray-600">From date</label>
+          <input id="fromDate" type="date" class="border rounded-lg p-2 w-full" />
+        </div>
+        <div>
+          <label class="text-sm text-gray-600">To date</label>
+          <input id="toDate" type="date" class="border rounded-lg p-2 w-full" />
+        </div>
+        <div>
+          <label class="text-sm text-gray-600">Item contains</label>
+          <input id="itemFilter" type="text" class="border rounded-lg p-2 w-full" placeholder="e.g. Budget" />
+        </div>
+        <div>
+          <label class="text-sm text-gray-600">Payer email contains</label>
+          <input id="emailFilter" type="text" class="border rounded-lg p-2 w-full" placeholder="e.g. gmail.com" />
+        </div>
+        <div>
+  <label class="text-sm text-gray-600">Event type</label>
+  <select id="eventMode" class="border rounded-lg p-2 w-full">
+    <option value="all">All events</option>
+    <option value="payments">Payments only</option>
+    <option value="orders">Orders only</option>
+  </select>
+</div>
+<div class="flex items-end">
+          <button id="applyFilters" class="border px-4 py-2 rounded-lg w-full">Apply</button>
+        </div>
+      </div>
+
+      <div id="summary" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div class="p-4 bg-gray-50 rounded-lg">
+          <div class="text-sm text-gray-600">Orders (filtered)</div>
+          <div id="sumCount" class="text-2xl font-semibold">0</div>
+        </div>
+        <div class="p-4 bg-gray-50 rounded-lg">
+          <div class="text-sm text-gray-600">Revenue (filtered)</div>
+          <div id="sumRevenue" class="text-2xl font-semibold">$0.00</div>
+        </div>
+        <div class="p-4 bg-gray-50 rounded-lg">
+          <div class="text-sm text-gray-600">Avg order value</div>
+          <div id="sumAOV" class="text-2xl font-semibold">$0.00</div>
+        </div>
+      </div>
+
+      
+      <div>
+        <h3 class="font-semibold mb-2">Payments vs Orders (in current date/item/email filter)</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="p-4 bg-gray-50 rounded-lg">
+            <div class="text-sm text-gray-600">Payments (PAYMENT.CAPTURE.COMPLETED)</div>
+            <div id="payCount" class="text-lg">0 orders • <span id="payRevenue">$0.00</span></div>
+          </div>
+          <div class="p-4 bg-gray-50 rounded-lg">
+            <div class="text-sm text-gray-600">Orders (CHECKOUT.ORDER.APPROVED)</div>
+            <div id="ordCount" class="text-lg">0 orders • <span id="ordRevenue">$0.00</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 class="font-semibold mb-2">Revenue by day</h3>
+        <div id="byDay" class="text-sm overflow-auto"></div>
+<div class="mt-6">
+  <h3 class="font-semibold mb-2">Revenue by month</h3>
+  <canvas id="byMonthChart" height="120"></canvas>
+</div>
+      </div>
+    </section>
+
+    <!-- Table -->
+    <section class="bg-white rounded-2xl shadow p-6">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-xl font-semibold">Recent Orders</h2>
+        <div class="flex gap-2">
+          <button id="refreshBtn" class="border px-3 py-2 rounded-lg">Refresh</button>
+          <button id="csvBtn" class="border px-3 py-2 rounded-lg">Download CSV</button>
+        </div>
+      </div>
+      <div class="overflow-auto">
+        <table class="min-w-full text-sm" id="ordersTable">
+          <thead class="bg-gray-100">
+            <tr>
+              <th data-sort="created_at" class="px-3 py-2 text-left cursor-pointer">Created ▲▼</th>
+              <th data-sort="paypal_order_id" class="px-3 py-2 text-left cursor-pointer">Order ID ▲▼</th>
+              <th data-sort="item_name" class="px-3 py-2 text-left cursor-pointer">Item ▲▼</th>
+              <th data-sort="amount_cents" class="px-3 py-2 text-left cursor-pointer">Amount ▲▼</th>
+              <th data-sort="currency" class="px-3 py-2 text-left cursor-pointer">Currency ▲▼</th>
+              <th data-sort="payer_email" class="px-3 py-2 text-left cursor-pointer">Payer Email ▲▼</th>
+              <th data-sort="event_type" class="px-3 py-2 text-left cursor-pointer">Event ▲▼</th>
+            </tr>
+          </thead>
+          <tbody id="ordersBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const statusEl = document.getElementById('status');
+    const tokenInput = document.getElementById('token');
+    const loadBtn = document.getElementById('loadBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const csvBtn = document.getElementById('csvBtn');
+    const bodyEl = document.getElementById('ordersBody');
+    const fromDateEl = document.getElementById('fromDate');
+    const toDateEl = document.getElementById('toDate');
+    const itemFilterEl = document.getElementById('itemFilter');
+    const emailFilterEl = document.getElementById('emailFilter');
+    const applyFiltersBtn = document.getElementById('applyFilters');
+
+    const sumCountEl = document.getElementById('sumCount');
+    const sumRevenueEl = document.getElementById('sumRevenue');
+    const sumAOVEl = document.getElementById('sumAOV');
+    const byDayEl = document.getElementById('byDay');
+
+    let rawRows = [];
+
+    const eventModeEl = document.getElementById('eventMode');
+    const payCountEl = document.getElementById('payCount');
+    const payRevenueEl = document.getElementById('payRevenue');
+    const ordCountEl = document.getElementById('ordCount');
+    const ordRevenueEl = document.getElementById('ordRevenue');
+
+    function eventTypeMatches(evt, mode){
+      if (mode === 'all') return true;
+      if (mode === 'payments') return (evt || '').toUpperCase().includes('PAYMENT.CAPTURE.COMPLETED');
+      if (mode === 'orders') return (evt || '').toUpperCase().includes('CHECKOUT.ORDER.APPROVED');
+      return true;
+    }
+
+    function computeComparison(baseRows){
+      const isPayment = (e) => (e || '').toUpperCase().includes('PAYMENT.CAPTURE.COMPLETED');
+      const isOrder = (e) => (e || '').toUpperCase().includes('CHECKOUT.ORDER.APPROVED');
+
+      const pays = baseRows.filter(r => isPayment(r.event_type));
+      const ords = baseRows.filter(r => isOrder(r.event_type));
+
+      const paySum = pays.reduce((a,r)=>a+Number(r.amount_cents||0),0)/100;
+      const ordSum = ords.reduce((a,r)=>a+Number(r.amount_cents||0),0)/100;
+
+      payCountEl.textContent = (pays.length + ' payments • ');
+      payRevenueEl.textContent = '$' + paySum.toFixed(2);
+      ordCountEl.textContent = (ords.length + ' orders • ');
+      ordRevenueEl.textContent = '$' + ordSum.toFixed(2);
+    }
+
+    let filteredRows = [];
+    let sortState = { key: 'created_at', dir: 'desc' };
+
+    function saveToken(t){ localStorage.setItem('finwise_admin_token', t); }
+    function getToken(){ return localStorage.getItem('finwise_admin_token') || ''; }
+    function clearToken(){ localStorage.removeItem('finwise_admin_token'); }
+
+    function setStatus(msg, ok=false){
+      statusEl.textContent = msg;
+      statusEl.className = 'text-sm ' + (ok ? 'text-green-600' : 'text-gray-500');
+    }
+
+    function withinDateRange(dtStr, fromStr, toStr){
+      const t = new Date(dtStr).getTime();
+      if (fromStr) {
+        const from = new Date(fromStr + 'T00:00:00').getTime();
+        if (t < from) return false;
+      }
+      if (toStr) {
+        const to = new Date(toStr + 'T23:59:59').getTime();
+        if (t > to) return false;
+      }
+      return true;
+    }
+
+    function applyFilters(){
+      const fromStr = fromDateEl.value;
+      const toStr = toDateEl.value;
+      const itemQuery = itemFilterEl.value.toLowerCase();
+      const emailQuery = emailFilterEl.value.toLowerCase();
+
+      const mode = eventModeEl.value;
+      const baseFiltered = rawRows.filter(r => {
+        const inDate = withinDateRange(r.created_at, fromStr, toStr);
+        const inItem = !itemQuery || (r.item_name || '').toLowerCase().includes(itemQuery);
+        const inEmail = !emailQuery || (r.payer_email || '').toLowerCase().includes(emailQuery);
+        return inDate && inItem && inEmail;
+      });
+
+      // Show comparison for base filtered dataset (ignoring mode)
+      computeComparison(baseFiltered);
+      // Apply event mode to the table/chart dataset
+      filteredRows = baseFiltered.filter(r => eventTypeMatches(r.event_type, mode));
+
+      sortAndRender();
+      updateSummary();
+      updateMonthlyChart();
+    }
+
+    function sortAndRender(){
+      const key = sortState.key;
+      const dir = sortState.dir;
+      const rows = [...filteredRows].sort((a,b) => {
+        let va = a[key], vb = b[key];
+        if (key === 'amount_cents') { va = Number(va||0); vb = Number(vb||0); }
+        if (key === 'created_at') { va = new Date(va).getTime(); vb = new Date(vb).getTime(); }
+        if (va < vb) return dir === 'asc' ? -1 : 1;
+        if (va > vb) return dir === 'asc' ? 1 : -1;
+        return 0;
+      });
+      renderRows(rows);
+    }
+
+    function renderRows(rows){
+      bodyEl.innerHTML = '';
+      rows.forEach(r => {
+        const tr = document.createElement('tr');
+        const dollars = (Number(r.amount_cents||0) / 100).toFixed(2);
+        tr.innerHTML = \`
+          <td class="border-t px-3 py-2">\${new Date(r.created_at).toLocaleString()}</td>
+          <td class="border-t px-3 py-2 font-mono">\${r.paypal_order_id||'-'}</td>
+          <td class="border-t px-3 py-2">\${r.item_name||'-'}</td>
+          <td class="border-t px-3 py-2">\${dollars}</td>
+          <td class="border-t px-3 py-2">\${r.currency||'USD'}</td>
+          <td class="border-t px-3 py-2">\${r.payer_email||'-'}</td>
+          <td class="border-t px-3 py-2">\${r.event_type||'-'}</td>
+        \`;
+        bodyEl.appendChild(tr);
+      });
+    }
+
+    function updateSummary(){
+      const count = filteredRows.length;
+      const revenue = filteredRows.reduce((acc, r) => acc + Number(r.amount_cents||0), 0) / 100;
+      const aov = count ? (revenue / count) : 0;
+      sumCountEl.textContent = count;
+      sumRevenueEl.textContent = '$' + revenue.toFixed(2);
+      sumAOVEl.textContent = '$' + aov.toFixed(2);
+
+      const map = {};
+      filteredRows.forEach(r => {
+        const d = new Date(r.created_at);
+        const y = d.getFullYear();
+        const m = String(d.getMonth()+1).padStart(2,'0');
+        const day = String(d.getDate()).padStart(2,'0');
+        const key = \`\${y}-\${m}-\${day}\`;
+        map[key] = (map[key] || 0) + Number(r.amount_cents||0);
+      });
+
+      const days = Object.keys(map).sort();
+      const rows = days.map(day => {
+        const dollars = (map[day]/100).toFixed(2);
+        return \`<div class="flex justify-between border-b py-1"><span>\${day}</span><span>$\${dollars}</span></div>\`;
+      });
+
+      byDayEl.innerHTML = rows.length ? rows.join('') : '<div class="text-gray-500">No data in range.</div>';
+    }
+
+    function toCSV(rows){
+      const header = ['created_at','paypal_order_id','item_name','amount','currency','payer_email','event_type'];
+      const lines = [header.join(',')];
+      rows.forEach(r => {
+        const amount = (Number(r.amount_cents||0)/100).toFixed(2);
+        const vals = [
+          new Date(r.created_at).toISOString(),
+          r.paypal_order_id||'',
+          r.item_name||'',
+          amount,
+          r.currency||'USD',
+          r.payer_email||'',
+          r.event_type||''
+        ];
+        lines.push(vals.map(v => '"' + String(v).replaceAll('"','""') + '"').join(','));
+      });
+      return lines.join('\n');
+    }
+
+    async function downloadCSV(){
+      const token = getToken();
+      const res = await fetch('/api/orders-list?token=' + encodeURIComponent(token));
+      const data = await res.json();
+      const csv = toCSV(data.orders || []);
+      const blob = new Blob([csv], {type: 'text/csv'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'orders.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    async function fetchOrders(){
+      const token = getToken();
+      if(!token){ setStatus('No token set. Enter your ADMIN_LIST_TOKEN.', false); return; }
+      setStatus('Loading orders…');
+      try {
+        const res = await fetch('/api/orders-list?token=' + encodeURIComponent(token));
+        if(!res.ok){ setStatus('Failed to load orders (' + res.status + '). Check your token and deployment.', false); return; }
+        const data = await res.json();
+        rawRows = data.orders || [];
+        applyFilters();
+        updateMonthlyChart();
+        setStatus('Loaded ' + rawRows.length + ' orders.', true);
+        logoutBtn.classList.remove('hidden');
+      } catch {
+        setStatus('Network error while loading orders.', false);
+      }
+    }
+
+    loadBtn.addEventListener('click', () => {
+      const t = tokenInput.value.trim();
+      if(!t){ setStatus('Please enter token.'); return; }
+      saveToken(t); tokenInput.value = ''; fetchOrders();
+    });
+    logoutBtn.addEventListener('click', () => { clearToken(); bodyEl.innerHTML=''; setStatus('Token cleared.'); logoutBtn.classList.add('hidden'); });
+    refreshBtn.addEventListener('click', fetchOrders);
+    csvBtn.addEventListener('click', downloadCSV);
+    document.querySelectorAll('th[data-sort]').forEach(th => {
+      th.addEventListener('click', () => {
+        const key = th.getAttribute('data-sort');
+        if (sortState.key === key) { sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc'; }
+        else { sortState.key = key; sortState.dir = 'asc'; }
+        sortAndRender();
+      });
+    });
+    document.getElementById('applyFilters').addEventListener('click', applyFilters);
+    eventModeEl.addEventListener('change', applyFilters);
+
+    
+    let byMonthChart = null;
+
+    function updateMonthlyChart(){
+      // Aggregate by YYYY-MM
+      const map = {};
+      filteredRows.forEach(r => {
+        const d = new Date(r.created_at);
+        const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+        map[key] = (map[key] || 0) + Number(r.amount_cents||0);
+      });
+      const labels = Object.keys(map).sort();
+      const values = labels.map(k => (map[k]/100).toFixed(2));
+
+      const ctx = document.getElementById('byMonthChart').getContext('2d');
+      if (byMonthChart){ byMonthChart.destroy(); }
+      byMonthChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Revenue ($)',
+            data: values
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: (ctx) => '$' + ctx.parsed.y } }
+          },
+          scales: {
+            y: { beginAtZero: true }
+          }
+        }
+      });
+    }
+
+    if(getToken()){ fetchOrders(); }
+  </script>
+</body>
+</html>

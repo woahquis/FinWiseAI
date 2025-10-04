@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://finwiseai.io/sitemap.xml

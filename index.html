@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FinWise AI — Smart Money Tools</title>
+  <meta name="description" content="FinWise AI: Free AI-powered finance calculators, guides, and digital tools to help you save, invest, and pay off debt." />
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="canonical" href="https://finwiseai.io/" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.paypal.com/sdk/js?client-id=ASguqHR-0crwF8Rn-EMY8hJoNpMdkBtmA1gI-jkNFU9w82WuHL02IPvQILqffnsl5M4E4nZf5lCQaaFI&currency=USD"></script>
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans">
+  <header class="bg-white shadow sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto flex justify-between items-center p-4">
+      <h1 class="text-2xl font-bold text-indigo-600">FinWise AI</h1>
+      <nav class="space-x-6 text-gray-700">
+        <a href="#home" class="hover:text-indigo-600">Home</a>
+        <a href="#products" class="hover:text-indigo-600">Products</a>
+        <a href="#contact" class="hover:text-indigo-600">Contact</a>
+      </nav>
+    </div>
+  </header>
+
+  <section id="home" class="bg-gradient-to-r from-indigo-600 to-green-500 text-white py-20 text-center">
+    <div class="max-w-4xl mx-auto">
+      <h2 class="text-4xl md:text-5xl font-bold mb-4">Take Control of Your Money with AI</h2>
+      <p class="text-lg md:text-xl mb-6">Smart calculators, tools, and guides to help you save, invest, and pay off debt faster.</p>
+    </div>
+  </section>
+
+  <section id="products" class="py-16 max-w-6xl mx-auto text-center">
+    <h3 class="text-3xl font-bold mb-8">Digital Products</h3>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div class="bg-white shadow rounded-2xl p-6 hover:shadow-lg">
+        <h4 class="text-xl font-semibold mb-2">AI Budget Template</h4>
+        <p class="text-gray-600 mb-4">Downloadable Excel/Google Sheet for smart budgeting.</p>
+        <div id="paypal-button-container-1"></div>
+      </div>
+      <div class="bg-white shadow rounded-2xl p-6 hover:shadow-lg">
+        <h4 class="text-xl font-semibold mb-2">Side Hustle Tracker</h4>
+        <p class="text-gray-600 mb-4">Track profits, expenses, and growth easily.</p>
+        <div id="paypal-button-container-2"></div>
+      </div>
+      <div class="bg-white shadow rounded-2xl p-6 hover:shadow-lg">
+        <h4 class="text-xl font-semibold mb-2">Finance Ebook Bundle</h4>
+        <p class="text-gray-600 mb-4">Step-by-step guides to saving & investing.</p>
+        <div id="paypal-button-container-3"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="contact" class="py-16 max-w-4xl mx-auto text-center">
+    <h3 class="text-3xl font-bold mb-6">Contact</h3>
+    <p class="text-gray-600">Questions or support? Email: support@finwiseai.io</p>
+  </section>
+
+  <footer class="bg-gray-800 text-gray-300 py-6 text-center">
+    <p>© 2025 FinWise AI · All Rights Reserved</p>
+  </footer>
+
+  <script>
+    (function(){ if (window.location.host.startsWith('www.')) {
+      window.location.replace('https://' + window.location.host.replace(/^www\./, '') + window.location.pathname);
+    } })();
+
+    function afterCapture(details, itemName, price) {
+      fetch('/api/order-log', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderID: details.id, payer: details.payer && details.payer.email_address, itemName, price })
+      }).catch(()=>{});
+      const params = new URLSearchParams({ order: details.id, item: itemName, amount: price }).toString();
+      window.location.href = '/thank-you.html?' + params;
+    }
+
+    function setupPayPalButton(containerId, itemName, price) {
+      paypal.Buttons({
+        createOrder: (data, actions) => actions.order.create({
+          purchase_units: [{ description: itemName, amount: { value: price } }]
+        }),
+        onApprove: (data, actions) => actions.order.capture().then(details => afterCapture(details, itemName, price)),
+        style: { color: 'gold', shape: 'pill', label: 'pay', layout: 'vertical' }
+      }).render(containerId);
+    }
+    setupPayPalButton('#paypal-button-container-1', 'AI Budget Template', '9.00');
+    setupPayPalButton('#paypal-button-container-2', 'Side Hustle Tracker', '12.00');
+    setupPayPalButton('#paypal-button-container-3', 'Finance Ebook Bundle', '19.00');
+  </script>
+</body>
+</html>
